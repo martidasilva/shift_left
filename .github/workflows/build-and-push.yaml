@@ -28,34 +28,6 @@ jobs:
           exit-code: 1
           ignore-unfixed: true
 
-      # Generate SBOM with Syft (scan LOCAL image by tag)
-      - name: Generate SBOM (Syft)
-        run: |
-          docker tag $FULL_IMAGE local-sbom-scan
-          docker run --rm \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            -v $(pwd):/work:rw \
-            -w /work \
-            anchore/syft:latest local-sbom-scan -o syft-json=sbom.syft.json
-          test -f sbom.syft.json && echo "✅ SBOM created: $(wc -l < sbom.syft.json) lines" || exit 1
-
-      - name: 📤 Upload SBOM artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: sbom-syft-json
-          path: sbom.syft.json
-          if-no-files-found: error
-          retention-days: 14
-
-      # Scan SBOM with Grype (REPORT mode)
-      - name: 🔎 Vulnerability scan (Grype)
-        run: |
-          docker run --rm \
-            -v $(pwd):/work:ro \
-            -w /work \
-            anchore/grype:latest sbom:sbom.syft.json \
-            --fail-on none
-
       - name: 🔑 Login to Quay.io
         run: |
           docker login quay.io -u "${{ secrets.QUAY_USER }}" -p "${{ secrets.QUAY_PASSWORD }}"
